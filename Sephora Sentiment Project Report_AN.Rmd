@@ -1,0 +1,619 @@
+---
+title: "Sentiment and Topic Analysis of Sephora Skincare Reviews"
+subtitle: "A Text as Data analysis using lexicon-based sentiment scoring and unsupervised topic modeling"
+author: "Amber Ni"
+date: "2025-05-04"
+output:
+  bookdown::pdf_document2:
+    number_sections: true
+bibliography: [packages.bib, references.bib]
+---
+
+\raggedbottom
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, eval = TRUE, warning = FALSE, message = FALSE)
+rm(list=ls())
+knitr::opts_knit$set(root.dir = "~/Desktop/Grad/25Spring/Intro to DS/PPOL6803_Final Projects")
+getwd()
+
+# Load required packages
+pacman::p_load(tidyverse, quanteda, quanteda.corpora, quanteda.textstats, quanteda.textmodels, dplyr, textclean, topicmodels, tidytext, modelsummary, stringr)
+```
+
+# Introduction
+
+## Background
+
+In 2023, 32% of global beauty and personal care sales were made online, up from 21% in 2019 [@statista2024]. As online shopping continues to gain popularity, beauty companies and brands are increasingly leveraging data analytics to better understand their consumers, develop tailored marketing strategies, and drive innovation. In fact, over 65% of beauty brands reported using AI and data analytics to personalize customer experiences in 2023 [@forbes2023]. With 82% seek out customer reviews before purchasing a beauty or grooming product [@space482023]] and 97% of consumers stating that online reviews influence their beauty product purchases [@powerreviews2023], it has become more important than ever for beauty marketers to align their communications and marketing strategies with consumer preferences and mindsets.
+
+Business analysts are utilizing consumer activity and consumption data to draw inferences and perform predictive analysis, particularly in three key areas: (1) market trends, (2) consumer preferences, and (3) online engagement.
+
+**1. Market Trend**
+
+Leveraging robust datasets available online across different brands and types of products now enables brands to anticipate emerging beauty trends in the market, giving them a more holistic picture of leading products  with further analysis on what is the newest driving force of consumption and allowing them to proactively develop products that meet evolving consumer desires.
+
+**2. Consumer preferences**
+
+By analyzing consumer purchase history, beauty brands can gain deep insights into what drives purchasing decisions. This includes understanding preferences for product ingredients, pricing, and brand loyalty. Additionally, tracking demographic and geographic preferences enables brands to tailor their strategies for different consumer segments, ensuring that their products align with the diverse needs and expectations of their target audience.
+
+**3. Online engagement**
+
+User interactions—likes, shares, comments, and reviews—serve as key indicators of brand performance and consumer sentiment. By analyzing engagement metrics across social media and e-commerce platforms, beauty brands can track trending products and identify potential pain points. Additionally, sentiment analysis and recommendation algorithms help brands address concerns, optimize product exposure, and foster deeper consumer interactions.
+
+## Overview of Sephora Online Shop
+
+Sephora’s online store serves as a premier platform for personal care and beauty products, offering a diverse and extensive choices from both global luxury brands and emerging labels. It offers over 340 brands and 45,000 products, including skincare, makeup, haircare, and fragrance. Sephora attracts over 50 million unique visitors to its website each month globally [@statista2024_sephora]. With millions of active consumers regularly sharing their experiences through detailed reviews, Sephora provides a rich source of user-generated content that captures authentic customer sentiments and preferences. 
+
+The platform’s vast selection of skincare products across various categories ensures a comprehensive representation of consumer behavior, making it an ideal dataset for analysis. This combination of high engagement, product variety, and brand diversity positions Sephora’s online shop as a valuable resource for data-driven insights into skincare trends, customer satisfaction drivers, and market dynamics.
+
+## Motivation 
+
+Customer reviews represent a rich and authentic avenue for understanding consumer behavior, preferences, and expectations, especially in industries like skincare, where personal experiences and subjective perceptions play a critical role in purchasing decisions. Unlike traditional surveys or sales data, reviews provide unsolicited, detailed feedback that captures both the emotional tone and practical considerations influencing consumer satisfaction. 
+
+Motivated by the potential of this data, I sought to explore how data science techniques could transform these narratives into actionable insights. Leveraging Sephora’s extensive repository of user reviews, this project aims to decode the factors that drive positive sentiment, reveal emerging skincare trends, and understand how elements such as product characteristics, personal skin concerns, and social media influence shape consumer opinions. By doing so, I hope to demonstrate how review analysis benefits brands in optimizing their product development, marketing strategies and consumer support.
+
+## Relevant Previous Work
+Recent analyses of Sephora's online reviews primarily focus on understanding customer sentiment, product preferences, and areas for service improvement through natural language processing and machine learning techniques. Projects on platforms like GitHub and Kaggle have employed models such as DistilBERT and PyTorch-based classifiers to perform sentiment analysis on large volumes of review data. These studies aim to extract insights into customer satisfaction, emotional tone, and common pain points, offering Sephora a deeper qualitative view beyond numerical ratings. Articles and customer feedback reports on market research platforms (e.g., from Kimola) also highlight themes like delivery delays, customer service frustrations, and the success of in-store experiences versus online shopping
+
+Overall, the existing body of work highlights a growing interest in using text analytics to enhance Sephora’s product strategy and digital customer experience. Unlike numeric ratings which do offer a quick summary of product evaluation, textual reviews offer richer, more nuanced insights by capturing human sentiment and context, providing a richer understanding of customer perceptions and behavior. 
+
+# Research Question 
+
+As such, this paper tries to understand **how specific review characteristics shape the emotional tone of skincare product reviews on online beauty platforms like Sephora**. It is expected that elements such as review length, ratings, certain themes, and characteristics of reviewers will significantly influence sentiment, whether positive or negative. The goal is to uncover patterns in emotional expression that can inform product development, marketing strategies, and customer engagement.
+
+# Data and Method
+
+## Data Source 
+The dataset used in this project consists of user-generated skincare product reviews scraped from Sephora.com and made available on Kaggle in March 2023. It contains over 60,000 observations, of which a random sample of 10,000 reviews was selected for analysis. This dataset provides both structured attributes (ratings, skin type of the reviewer, product price,  brand name) and unstructured text (review texts, review titles).
+
+## Unit of Analysis
+The unit of analysis in this project is the individual product review. Each observation represents a single customer’s written feedback on a skincare product listed on Sephora’s online platform. 
+
+```{r load}
+reviews <- read.csv("reviews_0-250.csv")
+```
+
+## Variables Used 
+
+```{r table1, echo=FALSE, fig.cap="Description of Variables used in the Study", fig.env='table'}
+knitr::include_graphics("PPOL6803_Variable_Table.pdf")
+
+```
+The primary variable of interest is the sentiment score expressed in each review, which captures the overall polarity and strength of sentiment (positive or negative) within the review text. This variable is used both descriptively and as the dependent variable in regression analysis to examine what features influence sentiment expression. 
+
+The explanatory variables include a set of review- and reviewer-level characteristics that may influence sentiment expression. These consist of structural features such as review length (token count) and product price, categorical attributes like skin type and dominant review topic, and contextual factors such as whether the review mentions social media. These variables are used to examine how different aspects of review content and context relate to variations in emotional tone (Table \@ref(fig:table1)).
+
+## Methodology
+
+The methodological steps include:
+
+- Descriptive Analysis: Used to explore baseline patterns across brand and skin type groups, helping to contextualize the variation in user feedback before applying formal models.
+
+- Sentiment Analysis: Implemented using the AFINN lexicon, which provides a pre-scored dictionary of English words with sentiment polarity. AFINN was chosen for its simplicity, numeric scoring system (from –5 to +5), and effectiveness in capturing emotional tone in consumer-generated content. Sentiment scores were normalized by review length to account for differences in verbosity across reviews.
+
+- Topic Modeling: Latent Dirichlet Allocation (LDA) was used as an unsupervised learning approach to discover latent themes in reviews without requiring pre-labeled data. This method was well-suited for identifying recurring topics in large volumes of unstructured text, enabling the assignment of a dominant topic to each review for further analysis.
+
+- TF-IDF and Log-Ratio Analysis: Used to identify the most distinctive vocabulary across sentiment categories. TF-IDF helped highlight frequently used but distinctive terms, while log-ratio analysis provided a direct comparison of term usage between positive and non-positive reviews.
+
+- Linear Regression: Chosen for its interpretability and ability to quantify the relationship between multiple explanatory variables and the dependent variable. This method allows for assessing the marginal effect of each review feature, while controlling for other variables.
+
+## Limitations to the Dataset/Measures
+
+The dataset is skewed, with over 80% of reviews being positive, which may limit the ability to detect factors influencing negative sentiment. It only covers a single year of data, lacking longitudinal insights or trends over time. In terms of measures, temporal effects such as product seasonality or marketing campaigns for a specific product are not accounted for. Additionally, the sentiment measure is based on a lexicon approach (AFINN), which may not fully capture context, sarcasm, or nuanced consumer expressions. Topic modeling is also constrained by the nature of the data: many reviews are short and contain overlapping vocabulary, making it difficult to extract highly distinct and interpretable topics. Finally, reviewer characteristics (e.g., demographics, purchase history) are not available, limiting control over individual-level heterogeneity.
+
+# Results
+
+## Summary of Findings
+
+Results reveal that review length, measured by token count, is significantly and negatively associated with sentiment scores. It suggests that longer reviews tend to express more critical or negative emotions. Among the topic-based variables, reviews categorized under "Texture, Fragrance & Makeup" are significantly more positive compared to the baseline category (Moisturization). In contrast, price, skin type, social media mentions, and other dominant topics such as “Problematic Skin” and “Purchase Experience” show no significant effects on sentiment. These findings suggest that how customers talk about certain topics and the length of their expressions plays a more important role in shaping emotional tone than demographic or price-related factors.
+
+## Descriptive Analysis of the Ratings 
+
+```{r subset, warning=FALSE}
+
+# Get a subset of 10000 observations
+set.seed(123)
+reviews_subset <- reviews %>% slice_sample(n = 10000)
+
+# Classify reviews into two categories
+reviews_subset <- reviews_subset %>%
+    mutate(review_type = case_when(
+    rating %in% c(4, 5) ~ "Positive",
+    rating %in% c(1, 2, 3) ~ "Non-positive"
+  ))
+
+# Only keep texts and categories for simplicity
+reviews_samp <- reviews_subset %>%
+  select(review_text, review_title, review_type) 
+
+```
+
+```{r brand, warning=FALSE}
+
+# ---------- Brand-level descriptive analysis
+
+samp_brand <- reviews_subset %>%
+    select(review_text, review_title, review_type, brand_name) 
+
+# Count the total number of reviews per brand
+brand_total <- samp_brand %>%
+  group_by(brand_name) %>%
+  summarise(total_reviews = n())
+
+# Count the number of positive and negative reviews per brand
+brand_reviews <- samp_brand %>%
+  group_by(brand_name, review_type) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+# Merge the total reviews with the positive/negative counts
+brand_reviews <- merge(brand_reviews, brand_total, by = "brand_name")
+
+# Calculate the proportion of positive and negative reviews
+brand_reviews <- brand_reviews %>%
+  mutate(proportion = count / total_reviews)
+
+# Find the top 5 brands with the highest proportion of positive reviews
+toppos_prop_brand <- brand_reviews %>%
+  filter(review_type == "Positive") %>%
+  arrange(desc(proportion)) %>%
+  slice_head(n = 5)
+
+# Find the top 5 brands with the highest proportion of non-positive reviews
+topnonpos_prop_brand <- brand_reviews %>%
+  filter(review_type == "Non-positive") %>%
+  arrange(desc(proportion)) %>%
+  slice_head(n = 5)
+```
+
+```{r brandTable1}
+knitr::kable(toppos_prop_brand,
+             caption = "Top 5 Brands with Highest Proportion of Positive Review")
+```
+
+```{r brandTable2}
+knitr::kable(topnonpos_prop_brand,
+             caption = "Top 5 Brands with Highest Proportion of Non-Positive Review")
+
+```
+
+First, reviews were categorized as “positive” (ratings 4–5) or “non-positive” (ratings 1–3) to explore rating patterns at both the brand and individual levels. At the brand level, the analysis focused on identifying which specific brands received the highest share of positive reviews. At the individual level, it focused on how different reviewer skin types received the highest share of positive reviews.
+
+- Brand-level: 
+Five skincare brands with the highest proportion of positive reviews. Interestingly, lesser-known or niche brands, such as REN Clean Skincare, Evian, and Sol de Janeiro, outperform more mainstream competitors in terms of customer satisfaction, with over 90% of their reviews being positive (Table \@ref(tab:brandTable1) and Table \@ref(tab:brandTable2)).
+
+```{r individual, warning=FALSE}
+
+# ---------- Individual-level descriptive analysis
+
+samp_ind <- reviews_subset %>%
+  filter(skin_type != "") %>%
+  select(review_text, review_title, review_type, skin_type) 
+
+# Count the total number of reviews per brand
+ind_total <- samp_ind %>%
+  group_by(skin_type) %>%
+  summarise(total_reviews = n())
+
+# Count the number of positive and negative reviews per brand
+ind_reviews <- samp_ind %>%
+  group_by(skin_type, review_type) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+# Merge the total reviews with the positive/negative counts
+ind_reviews <- merge(ind_reviews, ind_total, by = "skin_type")
+
+# Calculate the proportion of positive and negative reviews
+ind_reviews <- ind_reviews %>%
+  mutate(proportion = count / total_reviews)
+
+# Find the top 5 brands with the highest proportion of positive reviews
+toppos_prop_ind <- ind_reviews %>%
+  filter(review_type == "Positive") %>%
+  arrange(desc(proportion)) %>%
+  slice_head(n = 5)
+
+# Find the top 5 brands with the highest proportion of non-positive reviews
+topnonpos_prop_ind <- ind_reviews %>%
+  filter(review_type == "Non-positive") %>%
+  arrange(desc(proportion)) %>%
+  slice_head(n = 5)
+```
+
+```{r individualTable}
+knitr::kable(toppos_prop_ind,
+             caption = "Proportion of Positive Reviews by Skin Type")
+```
+
+
+- Individual-level:
+Reviewers with combination skin have the highest proportion of positive reviews, which may suggest their skin may be more adaptable to a variety of skincare products. In contrast, reviewers with dry skin report the lowest positive rating share, potentially because of greater sensitivity or difficulty finding products that meet their needs (Table \@ref(tab:individualTable)).
+
+## Overview of Text Language
+
+```{r preprocessing}
+
+## Some pre-processing steps (remove common English contractions and clean texts)
+reviews_samp$review_text <- gsub("'s|'m|'re|'d|'ve|'ll|n't|’s|’m|’re|’d|’ve|’ll|n’t", "", reviews_samp$review_text)
+
+reviews_samp$review_text <- reviews_samp$review_text %>%
+  replace_contraction() %>%  
+  replace_word_elongation() %>%  
+  replace_symbol() %>%  
+  replace_number() %>%  
+  replace_non_ascii() 
+
+pos_reviews <- reviews_samp[reviews_samp$review_type == "Positive", ]
+nonpos_reviews <- reviews_samp[reviews_samp$review_type == "Non-positive", ]
+
+## Tokenization & convert to a document-feature matrix (DFM) & trimming
+
+reviews_dfm <- tokens(reviews_samp$review_text, remove_punct = TRUE, remove_numbers = TRUE) %>%
+  tokens_tolower() %>%
+  dfm() %>%
+  dfm_wordstem() %>%
+  dfm_remove(stopwords("en")) # %>%
+# dfm_trim(min_docfreq = 0.001, max_docfreq = 0.999, docfreq_type = "prop", verbose = TRUE)
+
+pos_dfm <- tokens(pos_reviews$review_text, remove_punct = TRUE, remove_numbers = TRUE) %>%
+  tokens_tolower() %>%
+  dfm() %>%
+  dfm_wordstem() %>%
+  dfm_remove(stopwords("en")) # %>%
+# dfm_trim(min_docfreq = 0.001, max_docfreq = 0.999, docfreq_type = "prop", verbose = TRUE)
+
+nonpos_dfm <- tokens(nonpos_reviews$review_text, remove_punct = TRUE, remove_numbers = TRUE) %>%
+  tokens_tolower() %>%
+  dfm() %>%
+  dfm_wordstem() %>%
+  dfm_remove(stopwords("en")) # %>%
+# dfm_trim(min_docfreq = 0.001, max_docfreq = 0.999, docfreq_type = "prop", verbose = TRUE)
+
+```
+
+```{r wordclouds, fig.cap = "Review Word Cloud", fig.width=3, fig.height=3}
+
+# Load package necessary to create word clouds
+pacman::p_load(quanteda.textplots)
+
+# Create several word clouds for reviews (overall, positive, non-positive)
+
+reviews_wordcloud <- dfm_remove(reviews_dfm, c("skin", "product", "feel", "use", "just", "veri"))
+
+reviewsWordcloud <- textplot_wordcloud(reviews_wordcloud, random_order = FALSE,
+                   rotation = .25, max_words = 100,
+                   min_size = 0.5, max_size = 2.8,
+                   colors = RColorBrewer::brewer.pal(8, "Dark2"))
+```
+
+What are these reviews generally about? A word cloud analysis shows that skincare reviewers often express strong positive emotions, using words like "love", "great", and "recommend". Common themes include hydration and smoothness outcomes ("moisture", "hydration", "glow"), usage routines ("day", "night", "week"), and product types ("cream", "serum", "mask"). This reflects a focus on both emotional satisfaction and skincare results (Figure \@ref(fig:wordclouds)).
+
+## Differences in Vocabulary Between Positive and Non-Positive Reviews
+
+- TF-IDF: What are the most important and distinctive words in positive and non-positive reviews?
+```{r tf-idf}
+
+# Combine two dfms and tag documents with their group
+pos_dfm$group <- "positive"
+nonpos_dfm$group <- "non_positive"
+
+# Combine into one dfm
+combined_dfm <- rbind(pos_dfm, nonpos_dfm)
+
+# Compute TF-IDF
+tfidf_dfm <- dfm_tfidf(combined_dfm)
+
+# Split back by group
+tfidf_matrix <- convert(tfidf_dfm, to = "data.frame")
+doc_groups <- docvars(tfidf_dfm, "group")
+
+# Compute average tf-idf per term by group
+tfidf_by_group <- tfidf_matrix %>%
+  mutate(group = doc_groups) %>%
+  group_by(group) %>%
+  summarise(across(-doc_id, mean)) %>%
+  t() %>%
+  as.data.frame()
+
+# Rename and clean
+colnames(tfidf_by_group) <- tfidf_by_group[1,]
+tfidf_by_group <- tfidf_by_group[-1,]
+tfidf_by_group$term <- rownames(tfidf_by_group)
+
+# Sort top TF-IDF terms in each group
+top_pos_tfidf <- tfidf_by_group %>%
+  arrange(desc(positive)) %>%
+  slice(1:10) %>%
+  select(positive_tfidf = positive)
+
+top_nonpos_tfidf <- tfidf_by_group %>%
+  arrange(desc(non_positive)) %>%
+  slice(1:10) %>%
+  select(nonpositive_tfidf = non_positive)
+```
+
+```{r postfidf}
+knitr::kable(top_pos_tfidf,
+             caption = "Top Positive Terms by TF-IDF Weight")
+```
+
+```{r nonpostfidf}
+knitr::kable(top_nonpos_tfidf,
+             caption = "Top Non-Positive Terms by TF-IDF Weight")
+```
+
+
+TF-IDF analysis shows distinct language patterns by sentiment. Many terms are generic skincare words (e.g., “skin”, “face”, “product”, “use”), which is expected due to TF-IDF being influenced by frequency within the category. Still, positive reviews stand out with emotionally expressive terms like “love”, “feel”, and “moisture”. Non-positive reviews, on the other hand, highlight disappointment or frustration using words like “just”, “doe”, and “tri”, often referring to phrases that reflect unmet expectations (Table \@ref(tab:postfidf) and Table \@ref(tab:nonpostfidf)).
+
+```{r logratio, fig.cap = "Top 10 Differentiating Terms by Log-Ratio: Positive vs. Non-Positive", fig.width=5, fig.height=3}
+
+# ------------- Step 1: Calculate log-ratio of term probabilities
+
+# Extract feature names (keywords) from each dfm
+pos_terms <- featnames(pos_dfm)
+non_pos_terms <- featnames(nonpos_dfm)
+
+# Total number of terms in each dfm
+pos_total <- sum(pos_dfm)
+non_pos_total <- sum(nonpos_dfm)
+
+# Term frequencies with smoothing (+1 to avoid division by zero)
+pos_freq <- colSums(pos_dfm) + 1
+non_pos_freq <- colSums(nonpos_dfm) + 1
+
+# Calculate term probabilities
+pos_prob <- pos_freq / pos_total
+non_pos_prob <- non_pos_freq / non_pos_total
+
+# Create a unified set of all terms from both dfms
+all_terms <- union(pos_terms, non_pos_terms)
+
+# Ensure both probability vectors include all terms (fill missing terms with smoothing)
+pos_prob_full <- pos_prob[all_terms]
+non_pos_prob_full <- non_pos_prob[all_terms]
+
+pos_prob_full[is.na(pos_prob_full)] <- 1 / pos_total
+non_pos_prob_full[is.na(non_pos_prob_full)] <- 1 / non_pos_total
+
+# Compute log-ratio of term probabilities
+log_ratio <- log2(pos_prob_full / non_pos_prob_full)
+
+# Create a dataframe to store terms and their log-ratio values
+log_ratio_df <- data.frame(
+  term = all_terms,
+  log_ratio = log_ratio
+)
+
+# Sort by absolute value of log-ratio to find most differentiating terms
+log_ratio_df <- log_ratio_df %>% arrange(desc(abs(log_ratio)))
+
+# ------------- Step 2: Visualize the log-ratio result
+
+# Top 10 terms more frequent in positive reviews
+top_positive <- log_ratio_df %>%
+  filter(log_ratio > 0) %>%
+  arrange(desc(log_ratio)) %>%
+  slice(1:10)
+
+# Top 10 terms more frequent in non-positive reviews
+top_non_positive <- log_ratio_df %>%
+  filter(log_ratio < 0) %>%
+  arrange(log_ratio) %>%   
+  slice(1:10)
+
+# Combine them
+top_terms_balanced <- bind_rows(top_positive, top_non_positive)
+
+
+ggplot(top_terms_balanced, aes(x = reorder(term, log_ratio), y = log_ratio, fill = log_ratio > 0)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  scale_fill_manual(values = c("TRUE" = "steelblue", "FALSE" = "tomato"),
+                    labels = c("Positive", "Non-Positive")) +
+  labs(title = "",
+       x = "",
+       y = "Log2 Ratio (Positive / Non-Positive)",
+       fill = "More Frequent In") +
+  theme_minimal(base_size = 9) +  
+  theme(
+    legend.title = element_text(size = 9),
+    legend.text = element_text(size = 8),
+    axis.title.y = element_text(size = 9),
+    axis.text = element_text(size = 8)
+  )
+
+```
+
+- Log-Ratio of Term Probabilities: How much more (or less) frequent a word is in positive reviews vs. non-positive reviews?
+
+Positive reviews often highlight desirable skincare outcomes like “radiant”, “clearer”, or “healthy”, and reflect feelings of luxury or self-care through terms like “spa” and “treat”. In contrast, non-positive reviews focus on dissatisfaction or product failure, using harsh descriptors such as “refund”, “trash”, “burnt”, and “splotch” (Figure \@ref(fig:logratio)).
+
+## Sentiment Analysis 
+
+The AFINN dictionary was used to assign sentiment scores to words on a scale from –5 (most negative) to +5 (most positive). Each review was scored based on the sum of matched terms, and then normalized by the total word count to account for differences in review length.
+
+```{r afinn1, message=FALSE}
+pacman::p_load(quanteda, textdata)
+
+afinn <- lexicon_afinn()
+
+# Ensure all terms are lowercase to match DFM features
+afinn$word <- tolower(afinn$word)
+
+# Match DFM features with AFINN lexicon
+matched_reviewdfm <- dfm_match(reviews_dfm, features = afinn$word)
+
+# Create a named vector of AFINN scores
+afinn_vector <- afinn$value
+names(afinn_vector) <- afinn$word
+
+# Ensure feature order matches
+matched_features <- colnames(matched_reviewdfm)
+score_vector <- afinn_vector[matched_features]
+
+# Convert to matrix and multiply
+sentiment_scores <- as.numeric(matched_reviewdfm %*% score_vector)
+
+# add scores back to the data
+reviews_sentiment <- data.frame(
+  doc_id = docnames(matched_reviewdfm),
+  sentiment = sentiment_scores
+)
+
+```
+
+```{r afinn2, message=FALSE}
+# Normalize score
+
+## Count tokens (words) in each review
+token_counts <- ntoken(reviews_dfm) 
+
+## Add token count to sentiment dataframe (make sure order is preserved!)
+reviews_sentiment$token_count <- token_counts
+
+## Compute normalized sentiment score
+reviews_sentiment <- reviews_sentiment %>%
+  mutate(norm_sentiment = sentiment / token_count)
+
+# Add row index to both datasets
+reviews_sentiment <- reviews_sentiment %>% mutate(row_id = row_number())
+reviews_subset <- reviews_subset %>% mutate(row_id = row_number())
+
+# Merge to the original dataset
+reviews_subset <- left_join(reviews_subset, reviews_sentiment %>% select(row_id, sentiment, norm_sentiment), by = "row_id")
+```
+
+```{r afinn3}
+reviews_dis <- reviews_subset %>%
+  select(norm_sentiment, rating) %>%
+  pivot_longer(cols = c(norm_sentiment, rating), 
+               names_to = "variable", 
+               values_to = "value")
+```
+
+I then compared the distributions of normalized sentiment scores and star ratings across reviews. Both variables display similarly skewed patterns, with a strong concentration on the positive end—ratings cluster around 4 and 5 stars, while sentiment scores center above zero. This alignment confirms that most reviews are favorable, regardless of whether measured by numeric rating or lexicon-based sentiment scoring (Figure \@ref(fig:afinnVisual)).
+
+```{r afinnVisual, fig.cap = "Distribution of Review Ratings and Normalized Sentiment Scores", fig.width=6, fig.height=2}
+
+# Plot
+ggplot(reviews_dis, aes(x = value, fill = variable)) +
+  geom_density(alpha = 0.6) +
+  labs(
+    x = "Value",
+    y = "Density"
+  ) +
+  scale_fill_manual(
+    name = "Measure Type",
+    values = c("norm_sentiment" = "#F1948A", "rating" = "#76D7C4"),
+    labels = c("norm_sentiment" = "Normalized Sentiment Score", 
+               "rating" = "Ratings")
+  ) +
+  theme_minimal(base_size = 9) +  # sets consistent size for all text elements
+  theme(
+    legend.title = element_text(size = 9),
+    legend.text = element_text(size = 8),
+    axis.title = element_text(size = 9),
+    axis.text = element_text(size = 8)
+  )
+
+```
+
+
+## Topic Modeling
+
+To examine how review content themes relate to consumer evaluations, I descriptively analyzed both average ratings and sentiment scores across topics generated by LDA. Both in terms of average ratings and sentiment scores, “Texture, Fragrance & Makeup” received the highest evaluations, while “Purchase Experience & Satisfaction” consistently ranked the lowest (Figure \@ref(fig:lda)).
+
+```{r lda, fig.cap = "Top Words in Each Topic", fig.height=4, fig.width=4}
+
+# Fit LDA topic modeling for all reviews 
+
+# Clean dfm - remove some common topic-unrelated words
+custom_stopwords <- c("use", "like", "product", "feel", "love", "good", "realli", "get", "make", "tri", "work", "veri", "just", "day", "look", "even", "great", "much", "becaus", "never", "skin", "give", "now", "littl", "can", "one", "also", "think", "although")
+dfm_cleaned <- dfm_remove(reviews_dfm, pattern = custom_stopwords)
+
+# Convert dfm to dtm
+dtm_cleaned <- convert(dfm_cleaned, to = "topicmodels")
+
+# Apply LDA
+reviews_lda <- LDA(dtm_cleaned, k = 4, control = list(seed = 1234), alpha = 0.1, eta = 0.1) 
+
+# Identify the most representative words for each topic
+
+##  ---- STEP 1: Extract Word-Topic Probabilities ("Beta")  
+
+reviews_topics <- tidy(reviews_lda, matrix = "beta") # Extract word-topic probabilities
+
+## ----- STEP 2: Visualize the Top Words in Each Topic  
+
+reviews_top_terms <- reviews_topics %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 20) %>% 
+  # slice_max(beta, n = 10) %>% 
+  ungroup() %>%
+  arrange(topic, -beta)
+
+## Plot top words per topic
+reviews_top_terms %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(beta, term, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  scale_y_reordered() +
+  labs(title = "", x = "Word Probability (Beta)", y = "Word") +
+  theme_minimal(base_size = 9) + 
+  theme(
+    axis.title = element_text(size = 9),
+    axis.text = element_text(size = 5),
+    strip.text = element_text(size = 9) 
+  )
+```
+
+- Topic 1: Moisturization - words like “moisture” and “dri”
+- Topic 2: Problematic Skin (Acne/Sensitivity) - words like “acn” and “sensit”
+- Topic 3: Texture, Fragrance & Makeup - words like “cream”, “textur”, and “makeup”
+- Topic 4: Purchase Experience & Satisfaction - words “purchas”, “sampl”, “price”, “order”
+
+## Linear Regression
+
+In this section, I explored the factors associated with sentiment score in skincare product reviews by running a linear regression analysis. The dependent variable was the normalized sentiment score of each review. The main independent variable was the review’s most dominant topic, as identified through LDA topic modeling. I also included several control variables to account for other influences on sentiment: product price, reviewer skin type, review length, and whether the review referenced social media platforms or influencers (e.g., TikTok, YouTube).
+
+```{r table2, echo=FALSE, fig.cap="Regression Results: Review Characteristics and Sentiment", fig.env='table'}
+knitr::include_graphics("PPOL6803_Regression_Result_Table.pdf")
+
+```
+
+The analysis found that longer reviews tend to be associated with lower ratings, while reviews focused on “Texture, Fragrance & Makeup” are significantly linked to higher ratings, which aligns with our descriptive findings previously. In contrast, product price, reviewer skin type, and mentions of social media showed no significant impact on review ratings (Table \@ref(fig:table2)).
+
+# Discussion
+
+Our analysis reveals that Texture, Fragrance \& Makeup consistently received the highest average sentiment and ratings across skincare review topics. Reviews mentioning social media showed no statistically significant sentiment difference, while token count (i.e., review length) was a strong negative predictor of normalized sentiment score. Customers with dry skin were more likely to leave non-positive reviews, suggesting unmet needs in hydration. Interestingly, smaller or niche skincare brands such as REN Clean Skincare and Sol de Janeiro outperformed many well-known brands in terms of positive review proportions.
+
+This project contributes a scalable and interpretable NLP framework for extracting structured insights from unstructured consumer reviews.
+
+Our findings offer actionable guidance for product and marketing teams:
+
+- The clear dissatisfaction from dry skin customers suggests an opportunity for brands to improve hydration-oriented product lines and tailor messaging to address this group’s unmet needs.
+- The strong performance of lesser-known brands challenges assumptions about market dominance, indicating that consumer trust and satisfaction may hinge more on efficacy than name recognition.
+- Despite expectations, price did not significantly affect review sentiment, which implies that customers care more about value and results than price point alone. This insight could inform pricing strategy and communication emphasis.
+- Lastly, token count’s negative association with sentiment may reflect that longer reviews are more likely to express complaints—useful for customer service teams monitoring detailed feedback.
+
+Future work could incorporate time trends to capture evolving skincare preferences and influencer effects over time. Expanding the analysis to multilingual reviews or comparing cross-platform sentiment (e.g., Sephora vs. Ulta) may also enhance the generalizability of the findings.
+
+```{r package}
+knitr::write_bib(c("tidyverse", "quanteda", "quanteda.corpora", "quanteda.textstats", 
+                   "quanteda.textmodels", "dplyr", "textclean", "topicmodels", 
+                   "tidytext", "stringr", "quanteda.textplots", "textdata"), 
+                 "packages.bib")
+
+```
+
+# All Packages used
+
+This analysis was conducted using a variety of R packages that supported different stages of the workflow. Data manipulation and cleaning were primarily handled using the tidyverse [@R-tidyverse], including dplyr [@R-dplyr] and stringr [@R-stringr]. For text analysis, the quanteda ecosystem was extensively used, including quanteda [@R-quanteda], quanteda.corpora [@R-quanteda.corpora], quanteda.textstats [@R-quanteda.textstats], quanteda.textmodels [@R-quanteda.textmodels], and quanteda.textplots [@R-quanteda.textplots]. Topic modeling was performed using topicmodels [@R-topicmodels], and preprocessing steps were supported by textclean [@R-textclean] and tidytext [@R-tidytext]. The textdata package [@R-textdata] was used to load lexicon dictionaries.
+
+# Reference
+
+
