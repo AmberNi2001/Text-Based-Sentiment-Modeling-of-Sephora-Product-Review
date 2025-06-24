@@ -50,3 +50,12 @@ significant impact** on review ratings.
 
 <img width="802" alt="Screenshot 2025-06-24 at 3 31 29 PM" src="https://github.com/user-attachments/assets/5c622c7d-7a09-4ec6-8547-7cbdb420d87b" />
 
+## Limitation
+
+1. The dataset is heavily skewed, with over 80% of reviews being positive, limiting the ability to analyze negative sentiment.
+2. Only one year of data is included, preventing analysis of trends or changes over time.
+3. Temporal effects (e.g., product seasonality, marketing campaigns) are not accounted for in the analysis.
+4. Sentiment scores are derived from the AFINN lexicon, which may not capture context, sarcasm, or nuanced expressions.
+5. Many reviews are short and share overlapping vocabulary, making it challenging for topic modeling to generate distinct, interpretable themes.
+6. Reviewer-level data (e.g., demographics, purchase history) is unavailable, limiting the ability to control for individual heterogeneity.
+
