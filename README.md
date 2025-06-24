@@ -12,9 +12,8 @@ This project analyzes **Sephora skincare product reviews**, focusing on sentimen
 
 The repository **includes**: 
 1. R Markdown `.rmd`: Contains the full analysis pipeline, including data loading, preprocessing, descriptive analysis, visualization, sentiment analysis, topic modeling, and regression. The code is well-documented to ensure reproducibility and transparency.
-2. Output codes `.html`:  The knitted output of the R Markdown file, showing the complete analysis with embedded plots, tables, and markdown explanations.
-3. Project Report `.pdf`: A concise and visually structured summary of key findings, figures, and insights (generated from R Markdown)
-4. Output dataset `.csv`: Processed data used for regression modeling, including all variables used for the regression analysis.
+2. Project Report `.pdf`: A concise and visually structured summary of key findings, figures, and insights (generated from R Markdown)
+3. Output dataset `.csv`: Processed data used for regression modeling, including all variables used for the regression analysis.
 
 This project aims to decode the factors that drive positive sentiment, reveal emerging skincare trends, and understand how elements such as product characteristics, personal skin concerns, and social media influence shape consumer opinions. By doing so, this project hopes to demonstrate how review analysis benefits brands in optimizing their product development, marketing strategies and consumer support.
 
