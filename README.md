@@ -2,7 +2,7 @@
 **Author:** Amber Ni | **Date:** 05-02-2025 | **Course:** Intro to Data Science
 
 ## Project Description
-This project analyzes **Sephora skincare product reviews**, focusing on sentiment analysis and thematic insights across user groups with the main research question - how specific review characteristics shape the emotional tone of skincare product reviews on online beauty platforms like Sephora. It employs a range of **natural language processing (NLP)** and statistical techniques, following a structured workflow, **including**:
+This project analyzes **Sephora skincare product reviews**, focusing on sentiment analysis and thematic insights across user groups with the main research question - how specific review characteristics shape the emotional tone of skincare product reviews on online beauty platforms like Sephora. It employs a range of **natural language processing (NLP)**, **machine learning**, and **statistical techniques**, following a structured workflow, **including**:
 1. **Document sampling** – selected a subset of 10,000 reviews across skin types and product categories.  
 2. **Text preprocessing** – tokenization, stopword removal, and lemmatization to clean raw review texts.  
 3. **Descriptive analysis** – visualized word frequencies using word clouds, term frequency–inverse document frequency (TF-IDF), and Log-Ratio term differences. 
@@ -35,16 +35,18 @@ The dataset contains **602,130 observations** and **19 variables**.
 
 ## Variables Used
 
-The primary variable of interest is the sentiment score expressed in each review, which captures the overall polarity and strength of sentiment (positive or negative) within the review text. This variable is used both descriptively and as the dependent variable in regression analysis to examine what features influence sentiment expression.
-The explanatory variables include a set of review- and reviewer-level characteristics that may influence sentiment expression.
+The primary variable of interest is the **sentiment score** expressed in each review, which captures the overall polarity and strength of sentiment (positive or negative) within the review text. This variable is used both descriptively and as the dependent variable in regression analysis to examine what features influence sentiment expression.
+The explanatory variables include **a set of review- and reviewer-level characteristics** that may influence sentiment expression. See variable table below.
 
 <img width="1047" alt="Screenshot 2025-06-24 at 3 30 42 PM" src="https://github.com/user-attachments/assets/11558926-ca99-45e9-a406-561b990c3ad3" />
 
 ## Key Analysis and Findings
 
-This project explores the factors associated with sentiment score in skincare product reviews by running a linear regression analysis. The dependent variable was the normalized sentiment score of each review. The main independent variable was the review’s most dominant topic, as identified through LDA topic modeling. I also included several control variables to account for other influences on sentiment: product price, reviewer skin type, review length, and whether the review referenced social media platforms or influencers (e.g.,
-TikTok, YouTube). The analysis found that longer reviews tend to be associated with lower ratings, while reviews focused on “Texture, Fragrance & Makeup” are significantly linked to higher ratings, which aligns with our descriptive findings previously. In contrast, product price, reviewer skin type, and mentions of social media showed no
-significant impact on review ratings.
+This project **explores the factors associated with sentiment score in skincare product reviews by running a linear regression analysis**. The dependent variable was the normalized sentiment score of each review. The main independent variable was the review’s most dominant topic, as identified through LDA topic modeling. I also included several control variables to account for other influences on sentiment: product price, reviewer skin type, review length, and whether the review referenced social media platforms or influencers (e.g.,
+TikTok, YouTube). 
+
+The analysis found that **longer reviews** tend to be associated with **lower ratings**, while reviews focused on **“Texture, Fragrance & Makeup”** are significantly linked to **higher ratings**, which aligns with our descriptive findings previously. In contrast, product price, reviewer skin type, and mentions of social media **showed no
+significant impact** on review ratings.
 
 <img width="802" alt="Screenshot 2025-06-24 at 3 31 29 PM" src="https://github.com/user-attachments/assets/5c622c7d-7a09-4ec6-8547-7cbdb420d87b" />
 
