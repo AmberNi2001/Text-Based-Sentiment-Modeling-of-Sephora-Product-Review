@@ -1,5 +1,5 @@
 # Project: How do review characteristics affect the emotional tone in skincare product reviews?
-**Author:** Amber Ni | **Date:** 05-02-2025 | **Course:** Text As Data: Computational Linguistics
+**Author:** Amber Ni | **Date:** 05-02-2025 | **Course:** Intro to Data Science
 
 ## Project Description
 This project analyzes **Sephora skincare product reviews**, focusing on sentiment analysis and thematic insights across user groups with the main research question - how specific review characteristics shape the
