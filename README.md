@@ -38,7 +38,7 @@ The dataset contains **602,130 observations** and **19 variables**.
 The primary variable of interest is the **sentiment score** expressed in each review, which captures the overall polarity and strength of sentiment (positive or negative) within the review text. This variable is used both descriptively and as the dependent variable in regression analysis to examine what features influence sentiment expression.
 The explanatory variables include **a set of review- and reviewer-level characteristics** that may influence sentiment expression. See variable table below.
 
-<img width="1047" alt="Screenshot 2025-06-24 at 3 30 42 PM" src="https://github.com/user-attachments/assets/11558926-ca99-45e9-a406-561b990c3ad3" />
+<img width="973" alt="Screenshot 2025-06-24 at 3 50 53 PM" src="https://github.com/user-attachments/assets/90164323-74d3-4f2f-985e-371c3d0b1111" />
 
 ## Key Analysis and Findings
 
